@@ -1,0 +1,67 @@
+---
+title: "Lotto Number Frequency Visualization"
+format: html
+editor: visual
+---
+
+```{r setup, include=FALSE}
+
+library(httr)
+
+library(rvest)
+
+library(stringr)
+
+library(dplyr)
+
+library(ggplot2)
+
+library(quarto)
+```
+
+```{r}
+get_lotto_numbers =function(drwNo) {
+  url = 'https://www.dhlottery.co.kr/gameResult.do?method=byWin'
+  data_lotto <- POST(
+    url,
+    body = list(
+      drwNo = as.character(drwNo),
+      dwrNoList = as.character(drwNo)
+    )
+  )
+  
+  data_lotto_html <- data_lotto %>% read_html()
+  numbers <- data_lotto_html %>%
+    html_nodes('.num.win') %>%
+    html_text() %>%
+    str_extract_all('\\d+') %>%
+    unlist()
+  
+  return(numbers)
+}
+
+start_drwNo <- 1009
+end_drwNo <- 1014
+lotto_data <- list()
+
+for (i in start_drwNo:end_drwNo) {
+  cat("Getting data for draw number:", i, "\n")
+  lotto_data[[as.character(i)]] <- get_lotto_numbers(i)
+  Sys.sleep(2)
+}
+
+
+all_numbers <- unlist(lotto_data)
+number_freq <- as.data.frame(table(all_numbers))
+number_freq <- number_freq %>%
+  arrange(as.numeric(as.character(all_numbers))) %>%
+  rename(Number = all_numbers, Frequency = Freq)
+
+ggplot(number_freq, aes(x = factor(Number, levels = as.character(1:45)), y = Frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Lotto Number Frequency from Draw 1009 to 1014",
+       x = "Lotto Number",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
